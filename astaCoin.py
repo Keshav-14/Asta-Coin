@@ -10,7 +10,6 @@ class Blockchain:
     def __init__(self):
         
         self.chain = []
-        
         '''
         * The transactions are added only after mining the block! 
         * this list contains all the transaction that happened before the mining of the block
