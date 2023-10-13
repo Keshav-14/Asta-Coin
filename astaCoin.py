@@ -2,6 +2,8 @@
 import datetime as dt
 import hashlib as hl
 import json
+import requests
+from urllib.parse import urlparse # what does this dot specify 🤔
 
 class Blockchain:
     
@@ -10,12 +12,22 @@ class Blockchain:
         self.chain = []
         
         '''
+        * The transactions are added only after mining the block! 
+        * this list contains all the transaction that happened before the mining of the block
+        * the list is emptied once a block is mined
+        '''
+        self.transactions = []
+        '''
         * Mining the genesis block 
         * initiating the proof and the previous hash with an arbitrary values
         '''
         
         self.createBlock(proof = 1, previous_hash = '0')
-    
+        '''
+        * this nodes set will contains the address of all the nodes in the blockchain network
+        '''                
+        self.nodes = set()
+        
     # Building the Blockchain
 
     def createBlock(self, proof, previous_hash):
@@ -32,7 +44,9 @@ class Blockchain:
             'timeStamp' : str(dt.datetime.now()),
             'proof' : proof,
             'previousHash' : previous_hash,
+            'transactions' : self.transactions,
         }
+        self.transactions = []
         self.chain.append(block);
         return block
     
@@ -74,15 +88,7 @@ class Blockchain:
         return hl.sha256(encoded_block).hexdigest()
     
     
-    def isChainValid(self, chain):
-        
-        '''
-        !!!!!!!!!!!!!!
-        Why am i passing the chain as a parameter ? if i just wanna access i can directly access using self.chain !
-        but why am i passing?
-        !!!!!!!!!!!!!!
-        '''
-        
+    def isChainValid(self, chain):        
         '''
         * Verifies whether the previous block hash value in the block 
             is equal to the actual hash value of the previous block or not
@@ -104,3 +110,56 @@ class Blockchain:
             block_index += 1
         
         return True   
+    
+    def addTransaction(self, sender, receiver, amount):
+        '''
+        * adds transaction details => adds data to the blockchain
+        * defines a certain format for out transaction using a dictionary
+        * append the transaction detail into the transaction list
+        
+        !!!!!!
+        why returning the index of the previous block
+        !!!!!!
+        '''
+        
+        self.transactions.append({
+                'sender' : sender,
+                'receiver' : receiver,
+                'amount' : amount,
+            })
+        previous_block = self.getPreviousBlock()
+        return previous_block['index'] + 1
+    
+    def addNode(self, address):
+        '''
+        * takes the url address as input => url of the blockchain node in the decentralized network!
+        * the url is parsed and the network location is added to the set of nodes (self.nodes)
+        '''
+
+        parsed_url_address = urlparse(address)
+        self.nodes.add(parsed_url_address.netloc)
+        
+    def replaceChain(self):
+        '''
+        * Concensus Algorithm
+        * this function access all the blockchians in the network and replace its own chain
+            with the longest chain available in the network
+        * returns true if the self.chain is replaced otherwise false
+        '''
+        
+        network = self.nodes
+        longest_chain = None
+        max_length = len(self.chain)
+        for node in network:
+            response = requests.get(f'http://{node}/getChain')
+            if response.status_code == 200 :    # http success code
+                length = response.json()['Length of Chain']
+                chain = response.json()['Chain']
+                if length > max_length and self.isChainValid(chain):
+                    max_length = length
+                    longest_chain = chain
+        if longest_chain:
+            self.chain = longest_chain
+            return True
+        return False
+        
