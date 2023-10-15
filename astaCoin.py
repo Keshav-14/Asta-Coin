@@ -24,7 +24,7 @@ class Blockchain:
         self.createBlock(proof = 1, previous_hash = '0')
         '''
         * this nodes set will contains the address of all the nodes in the blockchain network
-        '''                
+        '''
         self.nodes = set()
         
     # Building the Blockchain
